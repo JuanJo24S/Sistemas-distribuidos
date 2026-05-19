@@ -35,11 +35,9 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  // CONFIGURACIÓN DE RED
-  // 10.0.2.2 es la IP para acceder al localhost de la PC desde el emulador Android.
-  // Cambiar por la IP real de tu PC (ej. 192.168.1.X) si pruebas en celular físico.
-  static const String host = "192.168.1.14"; 
-  
+  // Controlador para la IP dinámica
+  late TextEditingController _ipController;
+
   final Map<String, String> microservices = {
     "1": "Restaurantes",
     "2": "Pedidos",
@@ -55,7 +53,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<dynamic> results = [];
   String currentMethod = "";
 
+  @override
+  void initState() {
+    super.initState();
+    // Inicializamos con la última IP conocida
+    _ipController = TextEditingController(text: "172.20.10.2");
+  }
+
+  @override
+  void dispose() {
+    _ipController.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchDirectly() async {
+    final String host = _ipController.text.trim();
+    if (host.isEmpty) {
+      setState(() => errorMessage = "Por favor, ingresa una IP válida.");
+      return;
+    }
+
     final activeIndices = activeToggles.entries.where((e) => e.value).map((e) => e.key).toList();
     if (activeIndices.isEmpty) {
       _handleNoServiceSelected();
@@ -84,6 +101,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _fetchViaBFF() async {
+    final String host = _ipController.text.trim();
+    if (host.isEmpty) {
+      setState(() => errorMessage = "Por favor, ingresa una IP válida.");
+      return;
+    }
+
     final activeIndices = activeToggles.entries.where((e) => e.value).map((e) => e.key).join(",");
     if (activeIndices.isEmpty) {
       _handleNoServiceSelected();
@@ -135,7 +158,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _handleError() {
     setState(() {
       isLoading = false;
-      errorMessage = "¡Ups! La señal se perdió. Estamos intentando reconectar...";
+      errorMessage = "¡Ups! No se pudo conectar a ${_ipController.text}. Revisa la IP y que el servidor esté corriendo.";
     });
   }
 
@@ -155,9 +178,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildStatCard(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 15),
+            _buildIpInputField(),
+            const SizedBox(height: 15),
             _buildTogglesSection(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 15),
             _buildActionButton(
               label: "Carga Directa",
               icon: Icons.flash_off,
@@ -165,7 +190,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: isLoading ? null : _fetchDirectly,
               subtitle: "Peticiones individuales",
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             _buildActionButton(
               label: "Carga BFF",
               icon: Icons.bolt,
@@ -182,6 +207,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _buildResultsList(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildIpInputField() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.indigo.withOpacity(0.2)),
+      ),
+      child: TextField(
+        controller: _ipController,
+        decoration: const InputDecoration(
+          icon: Icon(Icons.settings_remote, color: Colors.indigo),
+          labelText: "IP del Servidor (PC)",
+          hintText: "Ej: 192.168.1.15",
+          border: InputBorder.none,
+        ),
+        keyboardType: TextInputType.number,
       ),
     );
   }
